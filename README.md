@@ -453,3 +453,10 @@ http.addFilterBefore(new JwtFilter(jwtUtil, userDetailsService),
 1. `SecurityConfig`가 **JwtUtil, UserDetailsService** 받아서 JWT 검증 준비
 2. **Spring Security 필터 체인**에 우리가 만든 `JwtFilter`를 등록
 3. 모든 요청이 들어오면 → **JWT 필터가 제일 먼저 실행**돼서 사용자 인증 처리
+
+## 9. AuthController에서 로그인 처리 매핑
+- AuthenticationManager → 아이디/비번 검증
+- JwtUtil → JWT 발급
+- ResponseCookie → JWT를 HttpOnly 쿠키에 담아 응답
+- 성공 → /my-page 이동
+- 실패 → 에러 메시지 담아 다시 /auth/login
