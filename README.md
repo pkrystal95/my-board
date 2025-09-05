@@ -402,3 +402,54 @@ SecurityContextHolder.getContext().setAuthentication(authentication);
 ```java
 filterChain.doFilter(request, response);
 ```
+
+#### (7) JWT 필터를 Spring Security 필터 체인에 등록
+
+- 1. 생성자 주입
+
+```java
+private final JwtUtil jwtUtil;
+private final CustomUserDetailsService userDetailsService;
+
+public SecurityConfig(JwtUtil jwtUtil, CustomUserDetailsService userDetailsService) {
+    this.jwtUtil = jwtUtil;
+    this.userDetailsService = userDetailsService;
+}
+```
+
+* `SecurityConfig` 클래스는 `JwtUtil` 과 `CustomUserDetailsService` 를 의존성으로 가짐
+* Spring이 빈을 자동으로 넣어줌 (생성자 주입)
+* 이렇게 주입받은 객체는 **JWT 검증**과 **유저 정보 조회**에 사용됨
+
+
+- 2. 필터 등록
+
+```java
+http.addFilterBefore(new JwtFilter(jwtUtil, userDetailsService),
+        UsernamePasswordAuthenticationFilter.class);
+```
+
+- 의미
+
+* **`new JwtFilter(jwtUtil, userDetailsService)`**
+  → 우리가 만든 JWT 인증 필터 객체 생성
+* **`addFilterBefore(…, UsernamePasswordAuthenticationFilter.class)`**
+  → 스프링 시큐리티의 기본 **Username/Password 로그인 처리 필터** 실행 전에 **JWT 필터**가 먼저 실행되도록 설정
+
+---
+
+- 💡 왜 `Before`?
+
+* 기본적으로 Spring Security는 **폼 로그인(`UsernamePasswordAuthenticationFilter`)** 이나 **세션 인증**을 먼저 사용
+* 우리는 **세션 기반 인증 대신 JWT 기반 인증**을 적용하려는 거니까,
+  요청이 오면 **JWT 필터가 먼저 토큰 검증**을 하고 → 인증 성공 시 SecurityContext에 저장 → 이후 기본 인증 필터가 건너뜀
+
+---
+
+- 👉 정리
+
+이 부분은
+
+1. `SecurityConfig`가 **JwtUtil, UserDetailsService** 받아서 JWT 검증 준비
+2. **Spring Security 필터 체인**에 우리가 만든 `JwtFilter`를 등록
+3. 모든 요청이 들어오면 → **JWT 필터가 제일 먼저 실행**돼서 사용자 인증 처리
