@@ -79,3 +79,62 @@ spring:
     hibernate:
       ddl-auto: update
 ```
+
+## 1. 프로젝트 실행
+- main 함수를 실행합니다.
+- Database 연결이 정상적으로 되었는지 확인
+```aiexclude
+2025-09-05T11:00:52.834+09:00  INFO 35755 --- [my-board] [  restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.0.35
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+```
+
+## **2. 페이지 연결**
+
+### **1) 컨트롤러 생성**
+
+* **`@Controller`**: 클래스가 **컨트롤러**임을 표시, View를 반환
+* **`@GetMapping`**: GET 요청을 처리할 메서드 표시, 지정 경로의 요청 처리
+
+```java
+@Controller
+public class MainController {
+    @GetMapping
+    public String index() {
+        return "index"; // templates/index.html 렌더링
+    }
+}
+```
+
+> 루트 경로(`/`) GET 요청 시 `index.html` 템플릿을 반환
+
+---
+
+### **2) 템플릿 작성 (Thymeleaf)**
+
+* **`lang="ko"`**: 페이지 언어가 **한국어**임을 명시 → SEO, 접근성 향상
+* **`xmlns:th="http://www.thymeleaf.org"`**: Thymeleaf 네임스페이스 선언
+
+    * `th:` 속성 사용 가능
+
+```html
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+```
+
+> `th:` 속성을 활용하면 HTML 내에서 동적 데이터 바인딩 가능
+
+---
+
+### **3) 실행 구성 편집 (IDE 설정)**
+
+* **구성 → 편집**
+* **옵션 수정 → 실행 작업 전에 추가**
+* **웹 브라우저 시작** 선택
+* **빌드 전에 웹 브라우저가 자동 실행되도록 순서 설정**
+
+> 이렇게 설정하면 프로젝트 실행 시 자동으로 브라우저에서 페이지 확인 가능
