@@ -29,7 +29,6 @@ public class AuthController {
     }
 
     // 해당 처리를 Service로 전달해주는...
-    // 해당 처리를 Service로 전달해주는...
     @PostMapping("/register") // POST
     public String register(@RequestParam String username,
                            @RequestParam String password,
@@ -40,7 +39,9 @@ public class AuthController {
             return "redirect:/";
         } catch (IllegalArgumentException e) {
             // 중복사용자
+//            redirectAttributes.addAttribute("error", e.getMessage()); // Model이 받아서 쓸 수 있게 RequestParam으로 주는 것
             redirectAttributes.addFlashAttribute("error", e.getMessage());
+            // 자동으로 model에 넣어줘서 request attribute로 꺼내 쓸 수 있음
             return "redirect:/auth/register";
         }
 //        return "redirect:/auth/login"; // login은 없으니까 403?
@@ -51,7 +52,6 @@ public class AuthController {
         return "login"; // login.html
     }
 
-    // 의존성 주입
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
 
@@ -60,23 +60,37 @@ public class AuthController {
                         @RequestParam String password,
                         HttpServletResponse response,
                         RedirectAttributes redirectAttributes) {
-
         try {
             // 인증 시도
-            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+            Authentication authentication = authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(
+                            username, password
+                    ));
 
+            // JWT 발급 -> 쿠키 로 저장
             String accessToken = jwtUtil.generateToken(username, authentication.getAuthorities().toString(), false);
-
-            ResponseCookie cookie = ResponseCookie.from("access_token", accessToken).httpOnly(true).path("/").maxAge(3600).build();
+            ResponseCookie cookie = ResponseCookie.from("access_token", accessToken)
+                    .httpOnly(true)
+                    .path("/")
+                    .maxAge(3600) // s, ms(x)
+                    .build();
+            // "Set-Cookie"
             response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
+            // RefreshToken
+            String refreshToken = jwtUtil.generateToken(username, authentication.getAuthorities().toString(), true);
+            ResponseCookie refreshCookie = ResponseCookie.from("refresh_cookie", refreshToken)
+                    .httpOnly(true)
+                    .path("/")
+                    .maxAge(3600 * 24) // s, ms(x)
+                    .build();
+            // "Set-Cookie"
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
             // 마이페이지로 이동
             return "redirect:/my-page";
-
-        } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("error", "로그인 실패");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/auth/login";
         }
     }
-
 }
