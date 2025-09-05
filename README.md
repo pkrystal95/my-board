@@ -271,3 +271,44 @@ return Jwts.builder()
   * Access Token이 만료되었을 때 새 Access Token 재발급용
   * 보통 DB/Redis에 저장해 관리
 
+## 7. CustomUserDetailsService 생성
+
+### 1. `@Service` + `@RequiredArgsConstructor`
+
+* **서비스 빈 등록**: 스프링이 관리하는 서비스 계층 클래스
+* `final UserAccountRepository`를 **생성자 주입**으로 자동 연결
+
+---
+
+### 2. `implements UserDetailsService`
+
+* **Spring Security의 필수 인터페이스**
+* 로그인 과정에서 **`loadUserByUsername()`** 메서드를 반드시 구현해야 함
+* Security가 로그인 시 사용자 이름(username)으로 호출 → 여기서 DB에서 유저 검색
+
+---
+
+### 3. `loadUserByUsername(String username)`
+
+```java
+UserAccount userAccount = userAccountRepository.findByUsername(username)
+    .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다"));
+```
+
+* DB에서 username으로 사용자 찾기
+* 없으면 `UsernameNotFoundException` 발생 (Spring Security가 처리)
+
+---
+
+### 4. `User.builder()`
+
+```java
+return User.builder()
+        .username(userAccount.getUsername())
+        .password(userAccount.getPassword())
+        .roles(userAccount.getRole())
+        .build();
+```
+
+* 찾은 사용자를 **Spring Security 전용 User 객체**로 변환
+* **username, password, role** 정보를 Security가 관리할 수 있게 전달
