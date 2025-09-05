@@ -312,3 +312,93 @@ return User.builder()
 
 * 찾은 사용자를 **Spring Security 전용 User 객체**로 변환
 * **username, password, role** 정보를 Security가 관리할 수 있게 전달
+
+## 8. JWT 필터 생성
+### 1. `extends OncePerRequestFilter`
+
+* **매 요청마다 단 한 번 실행되는 필터**
+* 클라이언트 요청이 들어올 때 `doFilterInternal()` 실행됨
+
+---
+
+### 2. 주요 필드
+
+```java
+private final JwtUtil jwtUtil;
+private final UserDetailsService userDetailsService;
+```
+
+* **`JwtUtil`** : 토큰 생성·검증 유틸리티
+* **`UserDetailsService`** : username으로 사용자 정보(DB) 조회
+
+---
+
+### 3. `doFilterInternal()` 동작 흐름
+
+#### (1) 쿠키에서 토큰 찾기
+
+```java
+for (Cookie c : request.getCookies()) {
+    if (c.getName().equals("access_token")) {
+        token = c.getValue();
+        break;
+    }
+}
+```
+
+* 요청에 포함된 쿠키 중 `"access_token"` 이름의 쿠키에서 JWT 추출
+
+---
+
+#### (2) 토큰이 없으면 → 그냥 다음 필터로 진행
+
+```java
+if(token == null) {
+    filterChain.doFilter(request, response);
+    return;
+}
+```
+
+---
+
+#### (3) 토큰이 유효하지 않으면 → 401 응답
+
+```java
+if(!jwtUtil.validateToken(token)) {
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+}
+```
+
+---
+
+#### (4) 토큰이 유효하면 → 사용자 정보 로드
+
+```java
+String username = jwtUtil.getUsername(token);
+UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+```
+
+* 토큰 안의 username 추출
+* DB에서 사용자 정보를 가져옴
+
+---
+
+#### (5) 인증 객체(Authentication) 생성 후 SecurityContext에 저장
+
+```java
+Authentication authentication =
+    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+SecurityContextHolder.getContext().setAuthentication(authentication);
+```
+
+* 인증된 사용자 정보(Security에서 사용 가능한 객체) 생성
+* **SecurityContext**에 등록 → 이후 컨트롤러에서 `@AuthenticationPrincipal` 같은 방식으로 접근 가능
+
+---
+
+#### (6) 다음 필터로 요청 전달
+
+```java
+filterChain.doFilter(request, response);
+```
