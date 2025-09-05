@@ -229,3 +229,31 @@ return http.build();
 - 요청 URL 접근 권한 체크
 - 로그인 요청 시 → AuthenticationManager → PasswordEncoder로 비밀번호 검증
 - 인증 성공 → 요청 처리, 컨트롤러로 전달
+
+
+## 4. JPA 설정
+### UserAccount Entity
+#### JPA 엔티티
+- 자바 클래스를 DB 테이블과 매핑
+- 객체 지향적으로 DB 데이터를 관리
+
+#### 기본 키 (id)
+- `@Id` → Primary Key 지정
+- `@GeneratedValue(strategy = GenerationType.IDENTITY)` → DB에서 자동 증가
+
+#### 사용자 정보
+`username` → 로그인 ID, 중복 불가, NULL 불가, 최대 50자
+`password` → 비밀번호, NULL 불가
+`role` → 권한 정보, NULL 불가, 최대 20자
+
+#### 컬럼 제약 (@Column)
+- `nullable` → 필수 입력 여부
+- `unique` → 중복 허용 여부
+- `length` → 최대 길이 제한
+
+#### Lombok 사용
+`@Getter` / `@Setter` → getter/setter 자동 생성, 코드 간결화
+
+#### Spring Security 연계
+- 엔티티를 기반으로 인증/권한 관리 가능
+- 로그인, 권한 체크, 역할 기반 접근 제어 등에 활용
