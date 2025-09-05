@@ -270,3 +270,8 @@ return http.build();
 - `UserAccountService`는 사용자 계정 등록의 핵심 비즈니스 로직을 담당
 - 비밀번호 암호화, 중복 확인, DB 저장 등을 책임지고 Spring Security와 연동 가능
 - 트랜잭션 보장으로 안정적인 DB 처리
+
+#### AuthController 생성
+- `AuthController`는 회원가입 페이지 표시와 회원가입 처리를 담당
+- Controller → Service → Repository → DB 단계별 역할 분리
+- Spring MVC와 Thymeleaf를 연동하여 웹 화면 + 비즈니스 로직 연결
