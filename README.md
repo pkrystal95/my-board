@@ -134,3 +134,140 @@
 3. Security 설정으로 URL 접근 권한 관리
 4. JPA 엔티티로 객체 지향적 DB 처리
 5. 회원가입, 로그인, 권한 체크 기능 구현 가능
+
+
+## 6. JWT 설정
+[JWT Key 제너레이터](https://jwtsecrets.com/)
+
+### **application.yml** 설정
+```aiexclude
+  jwt:
+    # https://jwtsecrets.com/
+    secret: "발급 받은 키 번호를 입력해주세요"
+    expiry:
+      # ms -> 1/1000 -> 1초 -> 1000ms
+      # 60 * 60
+      access: 3600000
+      # 24 * 60 * 60 = 86400000
+      refresh: 86400000
+```
+
+### 🔑 **JwtUtil 개념 설명**
+- JWT 발급 → 값 꺼내기 → 검증 기능을 모아놓은 유틸 클래스
+
+#### 1) 클래스 개요
+
+* **역할**: 사용자 로그인 성공 시 Access Token / Refresh Token을 발급
+* `@Component`: 스프링 빈으로 등록 → 다른 서비스/필터에서 주입해서 사용 가능
+* JWT의 생성과 관련된 로직만 담당 (순수 유틸 성격)
+
+---
+
+#### 2) 주요 필드
+
+```java
+private final SecretKey secretKey;   // JWT 서명용 비밀키
+private final Long accessExpiry;     // Access Token 만료시간(ms)
+private final Long refreshExpiry;    // Refresh Token 만료시간(ms)
+```
+
+* **SecretKey**
+
+  * JWT는 "서명(signature)"을 포함해 위조 여부를 검증
+  * `Keys.hmacShaKeyFor(secret.getBytes(...))` → HMAC-SHA 알고리즘 기반 SecretKey 생성
+  * `application.yml`에서 `jwt.secret` 값을 가져옴
+* **accessExpiry**
+
+  * Access Token 만료 시간 (보통 수분\~수시간)
+* **refreshExpiry**
+
+  * Refresh Token 만료 시간 (보통 수일\~수주)
+
+---
+
+#### 3) 생성자
+
+```java
+public JwtUtil(
+        @Value("${jwt.secret}") String secret,
+        @Value("${jwt.expiry.access}") Long accessExpiry,
+        @Value("${jwt.expiry.refresh}") Long refreshExpiry) {
+    this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    this.accessExpiry = accessExpiry;
+    this.refreshExpiry = refreshExpiry;
+}
+```
+
+* `@Value` → `application.yml`에 작성한 설정값을 자동 주입
+* 예시:
+
+  ```yaml
+  jwt:
+    secret: "내JWT시크릿키1234567890...."
+    expiry:
+      access: 3600000   # 1시간 (ms)
+      refresh: 1209600000 # 2주 (ms)
+  ```
+
+---
+
+#### 4) 토큰 생성 메서드
+
+```java
+public String generateToken(String username, String role, boolean isRefresh)
+```
+
+* **매개변수**
+
+  * `username`: 토큰 주인 (Subject)
+  * `role`: 사용자 권한(Role) → Claim에 포함
+  * `isRefresh`: Refresh Token 여부
+
+    * `true` → Refresh Token 발급
+    * `false` → Access Token 발급
+
+---
+
+#### 5) JWT 빌더
+
+```java
+return Jwts.builder()
+        .subject(username)  // JWT의 Subject (토큰 주인)
+        .claim("role", role) // 추가 정보(Claims)
+        .issuedAt(new Date()) // 발급 시간
+        .expiration(new Date(System.currentTimeMillis() + (isRefresh ? refreshExpiry : accessExpiry))) // 만료 시간
+        .signWith(secretKey) // 서명(Signature)
+        .compact(); // 최종 문자열 반환
+```
+
+* **subject**: 토큰의 주체 (보통 username)
+* **claim**: 커스텀 데이터 추가 (role 등)
+* **issuedAt**: 발급 시각
+* **expiration**: 만료 시각
+* **signWith**: SecretKey 기반으로 서명 → 위조 방지
+* **compact()**: 최종 JWT 문자열 생성
+
+---
+
+### 🛠️ JWT 발급 흐름
+
+1. 사용자가 로그인 요청 (`/auth/login`)
+2. 서버에서 사용자 인증 성공 → `JwtUtil.generateToken()` 호출
+3. Access Token & Refresh Token 발급
+4. 클라이언트(브라우저/앱)가 Access Token을 요청 헤더에 넣어서 API 호출
+5. 서버는 토큰 검증 후 요청 처리
+
+---
+
+### 🧩 Access Token vs Refresh Token
+
+* **Access Token**
+
+  * 짧은 유효 기간 (분\~시간)
+  * 요청 시 `Authorization: Bearer {토큰}` 으로 포함
+* **Refresh Token**
+
+  * 긴 유효 기간 (일\~주)
+  * Access Token이 만료되었을 때 새 Access Token 재발급용
+  * 보통 DB/Redis에 저장해 관리
+
