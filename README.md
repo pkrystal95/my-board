@@ -138,3 +138,94 @@ public class MainController {
 * **빌드 전에 웹 브라우저가 자동 실행되도록 순서 설정**
 
 > 이렇게 설정하면 프로젝트 실행 시 자동으로 브라우저에서 페이지 확인 가능
+
+
+## 3. 보안 설정
+
+### 1) Security Filter Chain 설정
+좋아요! 올려주신 코드는 **Spring Security 6+에서 사용되는 SecurityFilterChain 설정** 예시입니다. 하나씩 자세히 설명드릴게요.
+
+---
+
+#### **1. 메서드 정의**
+
+```java
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception
+```
+
+* `HttpSecurity http`: Spring Security에서 HTTP 요청 보안을 설정하는 객체
+* `SecurityFilterChain` 반환: 설정된 **보안 필터 체인**을 반환하여 Spring Security가 사용
+
+---
+
+#### **2. 비활성화 설정**
+
+```java
+http.csrf(AbstractHttpConfigurer::disable)
+    .formLogin(AbstractHttpConfigurer::disable)
+    .httpBasic(AbstractHttpConfigurer::disable);
+```
+
+* **`csrf`**: CSRF(Cross-Site Request Forgery) 공격 방어 기능
+
+  * 개발 중이거나 API 전용이면 비활성화 가능
+* **`formLogin`**: 기본 로그인 페이지 비활성화
+* **`httpBasic`**: HTTP Basic 인증 비활성화
+
+> 즉, 기본 제공 로그인/보안 기능을 끄고 커스텀 인증 구현 가능
+
+---
+
+#### **3. 요청별 접근 권한 설정**
+
+```java
+http.authorizeHttpRequests(auth -> auth
+        .requestMatchers("/", "/auth/register").permitAll()
+        .anyRequest().authenticated()
+);
+```
+
+* **`requestMatchers`**: 특정 URL 패턴 지정
+
+  * `/` → 메인 페이지
+  * `/auth/register` → 회원가입 페이지
+* **`permitAll()`**: 모든 사용자 접근 허용
+* **`anyRequest().authenticated()`**: 그 외 모든 요청은 **로그인 필요**
+
+> 요약:
+>
+> * 메인 페이지와 회원가입 페이지는 모두 접근 가능
+> * 그 외 페이지는 로그인한 사용자만 접근 가능
+
+---
+
+#### **4. 필터 체인 반환**
+
+```java
+return http.build();
+```
+
+* 설정이 완료된 **HttpSecurity 기반의 필터 체인**을 반환
+* Spring Security가 이 체인을 사용해 요청 보안을 처리
+
+---
+
+### 2) PasswordEncoder 설정
+- 사용자 비밀번호 암호화를 담당
+- `PasswordEncoderFactories.createDelegatingPasswordEncoder():`
+  - 다양한 인코딩 방식을 지원하는 권장 방식 
+  - 내부적으로 기본은 bcrypt 사용
+- 주석 처리된 `BCryptPasswordEncoder()`도 가능, bcrypt 단독 사용
+- 로그인 시 사용자가 입력한 비밀번호를 해시화하여 DB에 저장된 해시와 비교
+
+### 3) AuthenticationManager 설정
+- Spring Security에서 인증 처리 담당
+- `AuthenticationManager`는 사용자 인증 로직 수행
+- `AuthenticationConfiguration`을 통해 기본 설정된 AuthenticationManager를 가져옴
+- SecurityFilterChain과 함께 사용되어 인증, 비밀번호 검증, 권한 확인을 처리
+
+### 4) 전체적인 흐름
+- 클라이언트 요청 → SecurityFilterChain
+- 요청 URL 접근 권한 체크
+- 로그인 요청 시 → AuthenticationManager → PasswordEncoder로 비밀번호 검증
+- 인증 성공 → 요청 처리, 컨트롤러로 전달
