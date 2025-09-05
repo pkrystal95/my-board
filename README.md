@@ -454,9 +454,14 @@ http.addFilterBefore(new JwtFilter(jwtUtil, userDetailsService),
 2. **Spring Security 필터 체인**에 우리가 만든 `JwtFilter`를 등록
 3. 모든 요청이 들어오면 → **JWT 필터가 제일 먼저 실행**돼서 사용자 인증 처리
 
-## 9. AuthController에서 로그인 처리 매핑
+## 9. `AuthController`에서 로그인 처리 매핑
 - AuthenticationManager → 아이디/비번 검증
 - JwtUtil → JWT 발급
 - ResponseCookie → JWT를 HttpOnly 쿠키에 담아 응답
 - 성공 → /my-page 이동
 - 실패 → 에러 메시지 담아 다시 /auth/login
+
+## 10. `MainController`에 로그인 템플릿 호출 부분 추가
+- 로그인 성공한 사용자가 /my-page 요청 시 실행
+- Authentication에서 사용자 정보를 꺼내서 뷰에 전달
+- 화면에 “로그인한 사용자 이름”을 표시할 수 있음
