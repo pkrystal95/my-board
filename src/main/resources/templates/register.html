@@ -10,6 +10,9 @@
 <body>
 <h1>회원 가입</h1>
 <section>
+    <!-- 에러 메시지 표시 -->
+    <p th:if="${error}" th:text="${error}" style="color:red;"></p>
+
     <form th:action="@{/auth/register}" method="post">
         <!-- controller -> requestParam -->
         <input name="username" placeholder="ID를 입력해주세요" > <br>

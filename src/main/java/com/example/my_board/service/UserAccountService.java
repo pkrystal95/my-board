@@ -18,7 +18,7 @@ public class UserAccountService {
     @Transactional
     public UserAccount register(String username, String password) {
         if (userAccountRepository.findByUsername(username).isPresent()) {
-            throw new IllegalArgumentException("이미 존재하는 사용자");
+            throw new IllegalArgumentException("이미 존재하는 사용자입니다.");
         } // Controller -> 처리
 
         UserAccount userAccount = new UserAccount();
