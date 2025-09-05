@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: my-board
+
+  # 개발 모드로 설정
+  profiles:
+    active: dev
+
+  # 공통사항
+  datasource: # JPA
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    show-sql: true
