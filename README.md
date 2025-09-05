@@ -257,3 +257,16 @@ return http.build();
 #### Spring Security 연계
 - 엔티티를 기반으로 인증/권한 관리 가능
 - 로그인, 권한 체크, 역할 기반 접근 제어 등에 활용
+
+## 5. 회원가입 만들기
+### repository 패키지 생성
+#### UserAccountRepository 생성
+- `UserAccountRepository`는 UserAccount 엔티티를 DB에서 쉽게 조회/저장/삭제할 수 있도록 지원하는 인터페이스
+- Spring Data JPA 덕분에 복잡한 SQL 작성 없이도 CRUD와 조회 기능을 사용할 수 있음
+- 커스텀 메서드(findByUsername)는 메서드 이름 기반 쿼리 생성으로 간단하게 정의 가능
+
+### service 패키지 생성
+#### UserAccountService 생성
+- `UserAccountService`는 사용자 계정 등록의 핵심 비즈니스 로직을 담당
+- 비밀번호 암호화, 중복 확인, DB 저장 등을 책임지고 Spring Security와 연동 가능
+- 트랜잭션 보장으로 안정적인 DB 처리
