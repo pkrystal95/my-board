@@ -16,8 +16,8 @@
 
 <section>
   <h2>게시글 작성</h2>
-  <form th:object="${post}">
-    <input readonly th:field="*{username}" th:value="${#authentication.name}" > <br>
+  <form th:object="${post}" method="post">
+    <input readonly th:field="*{username}"> <br>
     <input th:field="*{title}" placeholder="제목" > <br>
     <input th:field="*{content}" placeholder="내용" > <br>
     <button>등록</button>
