@@ -1,4 +1,6 @@
-# **게시판 프로젝트 (개념 정리)**
+# **게시판 프로젝트 (개념 정리, Spring Security + JWT 포함)**
+
+---
 
 ## **0. 프로젝트 의존성 구성**
 
@@ -14,18 +16,16 @@
 | Spring Data Redis    | NoSQL(Redis) 연동 | 캐시, 세션 관리, Cluster/Sentinel/Reactive 지원 |
 | JWT                  | 인증 토큰           | 토큰 기반 인증 구현용                            |
 
-* `build.gradle`에 JWT 의존성 추가
-* 민감 정보는 `.gitignore`에 추가 (`*-dev.*`)
+> 🔹 민감 정보는 `.gitignore`에 추가 (`*-dev.*`)
+> 🔹 JWT 의존성은 `build.gradle`에 추가
 
 ---
 
 ## **1. 프로젝트 설정**
 
-* **application.yml / application-dev.yml**로 환경 구성
-
-  * DB 연결 정보, Hibernate 설정 등
-  * JPA를 통해 **자바 객체(Entity)로 DB 조작**
-* **main 함수 실행** → DB 연결 및 서버 정상 확인
+* **application.yml / application-dev.yml**: 환경별 DB, JPA, JWT 설정
+* JPA를 통해 자바 객체(Entity)와 DB 매핑
+* 서버 실행 → DB 연결 및 서버 정상 동작 확인
 
 ---
 
@@ -33,63 +33,65 @@
 
 ### **Controller**
 
-* `@Controller`: View 반환, 클래스가 컨트롤러임 표시
-* `@GetMapping`: GET 요청 처리
-* `@RequestMapping("/auth")`: URL prefix 지정 (`/auth/**`)
+* `@Controller` → View 반환용
+* `@GetMapping` → GET 요청 처리
+* `@RequestMapping("/auth")` → URL prefix 지정 (`/auth/**`)
 
 ### **템플릿**
 
-* Thymeleaf 사용 (`th:` 속성 활용)
-* HTML 구조: `lang="ko"` → 한국어, SEO/접근성 향상
-* 회원가입 폼: `<form th:action="@{/auth/register}" method="post">` → Controller로 POST 전송
+* Thymeleaf 사용 → `th:action`, `th:value` 등 활용
+* 회원가입 폼 예:
+
+```html
+<form th:action="@{/auth/register}" method="post">
+```
 
 ### **실행 환경**
 
-* IDE 설정으로 프로젝트 실행 시 브라우저 자동 시작
+* IDE에서 실행 → 브라우저 자동 시작 가능
 
 ---
 
-## **3. 보안 설정 (Spring Security)**
+## **3. Spring Security 설정**
 
-* **SecurityFilterChain**
+### **SecurityFilterChain**
 
-  * CSRF, 기본 로그인 페이지, HTTP Basic 인증 비활성화
-  * `/`와 `/auth/register`는 모두 접근 허용
-  * 그 외 페이지는 로그인 필요
+* CSRF, 기본 로그인 페이지, HTTP Basic 인증 비활성화
+* `/`와 `/auth/register` 접근 허용
+* 그 외 페이지는 로그인 필요
 
-* **PasswordEncoder**
+### **PasswordEncoder**
 
-  * 비밀번호 암호화 처리 (`bcrypt` 기본)
-  * 로그인 시 입력 비밀번호와 DB 저장 비밀번호 비교
+* 비밀번호 암호화 (`bcrypt`)
+* 로그인 시 입력 비밀번호와 DB 저장 비밀번호 비교
 
-* **AuthenticationManager**
+### **AuthenticationManager**
 
-  * 인증 처리 담당
-  * SecurityFilterChain과 함께 로그인, 권한 검증 수행
+* 인증 처리 담당
+* SecurityFilterChain과 함께 로그인, 권한 검증 수행
 
-* **전체 흐름**
+### **인증 흐름**
 
-  1. 클라이언트 요청 → SecurityFilterChain
-  2. 요청 URL 접근 권한 체크
-  3. 로그인 요청 → AuthenticationManager → PasswordEncoder로 비밀번호 검증
-  4. 인증 성공 → 컨트롤러로 요청 전달
+1. 클라이언트 요청 → SecurityFilterChain
+2. URL 접근 권한 체크
+3. 로그인 요청 → AuthenticationManager → PasswordEncoder로 비밀번호 검증
+4. 인증 성공 → Controller 처리
 
 ---
 
-## **4. JPA 설정**
+## **4. JPA 설정 (UserAccount)**
 
-* **UserAccount 엔티티**
+* 엔티티 필드
 
-  * JPA 엔티티: DB 테이블과 매핑
-  * 필드
+| 필드       | 역할     | 제약                       |
+| -------- | ------ | ------------------------ |
+| id       | PK     | auto increment           |
+| username | 로그인 ID | unique, not null, max 50 |
+| password | 비밀번호   | not null                 |
+| role     | 권한     | not null, max 20         |
 
-    * `id`: Primary Key, 자동 증가
-    * `username`: 로그인 ID, 중복 불가, NULL 불가, 최대 50자
-    * `password`: 비밀번호, NULL 불가
-    * `role`: 권한, NULL 불가, 최대 20자
-  * 컬럼 제약: `nullable`, `unique`, `length`
-  * Lombok 사용: `@Getter`, `@Setter`
-  * Spring Security 연계: 인증/권한 관리 가능
+* Lombok: `@Getter`, `@Setter`
+* Spring Security 연계 가능
 
 ---
 
@@ -97,371 +99,157 @@
 
 ### **Repository**
 
-* `UserAccountRepository`
-
-  * CRUD 기능 제공, 복잡한 SQL 없이 DB 처리 가능
-  * 커스텀 메서드: `findByUsername()` → 메서드 이름 기반 쿼리 생성
+* `UserAccountRepository` → CRUD + `findByUsername()`
 
 ### **Service**
 
-* `UserAccountService`
-
-  * 사용자 등록 로직 처리
-  * 비밀번호 암호화, 중복 체크, DB 저장
-  * `@Transactional` → 트랜잭션 보장
+* 사용자 등록, 비밀번호 암호화, 중복 체크, DB 저장
+* `@Transactional` 적용
 
 ### **Controller**
 
-* `AuthController`
-
-  * 회원가입 페이지 표시 (`GET /auth/register`)
-  * 회원가입 처리 (`POST /auth/register`)
-  * Controller → Service → Repository → DB 흐름 수행
+* `/auth/register` GET → 폼 페이지
+* `/auth/register` POST → Service 호출 후 DB 저장
+* 에러 시 `RedirectAttributes`로 메시지 전달
 
 ### **View**
 
-* 회원가입 폼 (`register.html`)
-
-  * 사용자 입력 받아 컨트롤러 전달
-  * Thymeleaf로 Spring MVC Controller와 동적 연동
+* `register.html` → 사용자 입력 → Controller POST 전달
 
 ---
 
-### **정리**
+## **6. JWT 설정**
 
-1. 프로젝트 실행 → DB 연결 확인
-2. Controller → Service → Repository → DB → View
-3. Security 설정으로 URL 접근 권한 관리
-4. JPA 엔티티로 객체 지향적 DB 처리
-5. 회원가입, 로그인, 권한 체크 기능 구현 가능
+### **application.yml**
 
-
-## 6. JWT 설정
-[JWT Key 제너레이터](https://jwtsecrets.com/)
-
-### **application.yml** 설정
-```aiexclude
-  jwt:
-    # https://jwtsecrets.com/
-    secret: "발급 받은 키 번호를 입력해주세요"
-    expiry:
-      # ms -> 1/1000 -> 1초 -> 1000ms
-      # 60 * 60
-      access: 3600000
-      # 24 * 60 * 60 = 86400000
-      refresh: 86400000
+```yaml
+jwt:
+  secret: "JWT_시크릿키_입력"
+  expiry:
+    access: 3600000      # 1시간
+    refresh: 86400000    # 1일
 ```
 
-### 🔑 **JwtUtil 개념 설명**
-- JWT 발급 → 값 꺼내기 → 검증 기능을 모아놓은 유틸 클래스
+### **JwtUtil 역할**
 
-#### 1) 클래스 개요
+1. JWT 발급
+2. JWT 데이터 추출 (username, role)
+3. JWT 검증
 
-* **역할**: 사용자 로그인 성공 시 Access Token / Refresh Token을 발급
-* `@Component`: 스프링 빈으로 등록 → 다른 서비스/필터에서 주입해서 사용 가능
-* JWT의 생성과 관련된 로직만 담당 (순수 유틸 성격)
+### **주요 메서드**
 
----
+* `generateToken(username, role, isRefresh)` → JWT 발급
+* `getUsername(token)` → 토큰에서 username 추출
+* `getRole(token)` → 토큰에서 role 추출
+* `validateToken(token)` → 토큰 유효성 체크
 
-#### 2) 주요 필드
-
-```java
-private final SecretKey secretKey;   // JWT 서명용 비밀키
-private final Long accessExpiry;     // Access Token 만료시간(ms)
-private final Long refreshExpiry;    // Refresh Token 만료시간(ms)
-```
-
-* **SecretKey**
-
-  * JWT는 "서명(signature)"을 포함해 위조 여부를 검증
-  * `Keys.hmacShaKeyFor(secret.getBytes(...))` → HMAC-SHA 알고리즘 기반 SecretKey 생성
-  * `application.yml`에서 `jwt.secret` 값을 가져옴
-* **accessExpiry**
-
-  * Access Token 만료 시간 (보통 수분\~수시간)
-* **refreshExpiry**
-
-  * Refresh Token 만료 시간 (보통 수일\~수주)
+> 🔑 Access Token: 짧은 만료 시간
+> 🔑 Refresh Token: 긴 만료 시간, Access Token 재발급용
 
 ---
 
-#### 3) 생성자
+## **7. CustomUserDetailsService**
 
-```java
-public JwtUtil(
-        @Value("${jwt.secret}") String secret,
-        @Value("${jwt.expiry.access}") Long accessExpiry,
-        @Value("${jwt.expiry.refresh}") Long refreshExpiry) {
-    this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-    this.accessExpiry = accessExpiry;
-    this.refreshExpiry = refreshExpiry;
-}
-```
+* `UserDetailsService` 구현 필수
+* `loadUserByUsername(username)` → DB 조회 후 Spring Security용 `User` 반환
+* 인증 성공 시 SecurityContext에 등록 가능
+* `User.builder().username(...).password(...).roles(...)`
 
-* `@Value` → `application.yml`에 작성한 설정값을 자동 주입
-* 예시:
-
-  ```yaml
-  jwt:
-    secret: "내JWT시크릿키1234567890...."
-    expiry:
-      access: 3600000   # 1시간 (ms)
-      refresh: 1209600000 # 2주 (ms)
-  ```
+> ⚠️ `roles()`에 `ROLE_` 자동 추가 → `"ROLE_USER"`처럼 직접 `"ROLE_"` 붙이면 안됨
 
 ---
 
-#### 4) 토큰 생성 메서드
+## **8. JWT 필터 (JwtFilter)**
 
-```java
-public String generateToken(String username, String role, boolean isRefresh)
-```
+### **역할**
 
-* **매개변수**
+* 요청마다 Access Token 검증
+* 유효하면 SecurityContext에 인증 정보 등록
 
-  * `username`: 토큰 주인 (Subject)
-  * `role`: 사용자 권한(Role) → Claim에 포함
-  * `isRefresh`: Refresh Token 여부
+### **동작 흐름**
 
-    * `true` → Refresh Token 발급
-    * `false` → Access Token 발급
+1. 쿠키에서 `access_token` 추출
+2. 없으면 필터 체인 통과
+3. 토큰 유효 → username 추출 → UserDetails 조회 → SecurityContextHolder에 등록
+4. 토큰 만료/유효하지 않으면 401 응답
+5. 다음 필터로 진행
 
----
-
-#### 5) JWT 빌더
-
-```java
-return Jwts.builder()
-        .subject(username)  // JWT의 Subject (토큰 주인)
-        .claim("role", role) // 추가 정보(Claims)
-        .issuedAt(new Date()) // 발급 시간
-        .expiration(new Date(System.currentTimeMillis() + (isRefresh ? refreshExpiry : accessExpiry))) // 만료 시간
-        .signWith(secretKey) // 서명(Signature)
-        .compact(); // 최종 문자열 반환
-```
-
-* **subject**: 토큰의 주체 (보통 username)
-* **claim**: 커스텀 데이터 추가 (role 등)
-* **issuedAt**: 발급 시각
-* **expiration**: 만료 시각
-* **signWith**: SecretKey 기반으로 서명 → 위조 방지
-* **compact()**: 최종 JWT 문자열 생성
-
----
-
-### 🛠️ JWT 발급 흐름
-
-1. 사용자가 로그인 요청 (`/auth/login`)
-2. 서버에서 사용자 인증 성공 → `JwtUtil.generateToken()` 호출
-3. Access Token & Refresh Token 발급
-4. 클라이언트(브라우저/앱)가 Access Token을 요청 헤더에 넣어서 API 호출
-5. 서버는 토큰 검증 후 요청 처리
-
----
-
-### 🧩 Access Token vs Refresh Token
-
-* **Access Token**
-
-  * 짧은 유효 기간 (분\~시간)
-  * 요청 시 `Authorization: Bearer {토큰}` 으로 포함
-* **Refresh Token**
-
-  * 긴 유효 기간 (일\~주)
-  * Access Token이 만료되었을 때 새 Access Token 재발급용
-  * 보통 DB/Redis에 저장해 관리
-
-## 7. CustomUserDetailsService 생성
-
-### 1. `@Service` + `@RequiredArgsConstructor`
-
-* **서비스 빈 등록**: 스프링이 관리하는 서비스 계층 클래스
-* `final UserAccountRepository`를 **생성자 주입**으로 자동 연결
-
----
-
-### 2. `implements UserDetailsService`
-
-* **Spring Security의 필수 인터페이스**
-* 로그인 과정에서 **`loadUserByUsername()`** 메서드를 반드시 구현해야 함
-* Security가 로그인 시 사용자 이름(username)으로 호출 → 여기서 DB에서 유저 검색
-
----
-
-### 3. `loadUserByUsername(String username)`
-
-```java
-UserAccount userAccount = userAccountRepository.findByUsername(username)
-    .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다"));
-```
-
-* DB에서 username으로 사용자 찾기
-* 없으면 `UsernameNotFoundException` 발생 (Spring Security가 처리)
-
----
-
-### 4. `User.builder()`
-
-```java
-return User.builder()
-        .username(userAccount.getUsername())
-        .password(userAccount.getPassword())
-        .roles(userAccount.getRole())
-        .build();
-```
-
-* 찾은 사용자를 **Spring Security 전용 User 객체**로 변환
-* **username, password, role** 정보를 Security가 관리할 수 있게 전달
-
-## 8. JWT 필터 생성
-### 1. `extends OncePerRequestFilter`
-
-* **매 요청마다 단 한 번 실행되는 필터**
-* 클라이언트 요청이 들어올 때 `doFilterInternal()` 실행됨
-
----
-
-### 2. 주요 필드
-
-```java
-private final JwtUtil jwtUtil;
-private final UserDetailsService userDetailsService;
-```
-
-* **`JwtUtil`** : 토큰 생성·검증 유틸리티
-* **`UserDetailsService`** : username으로 사용자 정보(DB) 조회
-
----
-
-### 3. `doFilterInternal()` 동작 흐름
-
-#### (1) 쿠키에서 토큰 찾기
-
-```java
-for (Cookie c : request.getCookies()) {
-    if (c.getName().equals("access_token")) {
-        token = c.getValue();
-        break;
-    }
-}
-```
-
-* 요청에 포함된 쿠키 중 `"access_token"` 이름의 쿠키에서 JWT 추출
-
----
-
-#### (2) 토큰이 없으면 → 그냥 다음 필터로 진행
-
-```java
-if(token == null) {
-    filterChain.doFilter(request, response);
-    return;
-}
-```
-
----
-
-#### (3) 토큰이 유효하지 않으면 → 401 응답
-
-```java
-if(!jwtUtil.validateToken(token)) {
-    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-}
-```
-
----
-
-#### (4) 토큰이 유효하면 → 사용자 정보 로드
-
-```java
-String username = jwtUtil.getUsername(token);
-UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-```
-
-* 토큰 안의 username 추출
-* DB에서 사용자 정보를 가져옴
-
----
-
-#### (5) 인증 객체(Authentication) 생성 후 SecurityContext에 저장
-
-```java
-Authentication authentication =
-    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-
-SecurityContextHolder.getContext().setAuthentication(authentication);
-```
-
-* 인증된 사용자 정보(Security에서 사용 가능한 객체) 생성
-* **SecurityContext**에 등록 → 이후 컨트롤러에서 `@AuthenticationPrincipal` 같은 방식으로 접근 가능
-
----
-
-#### (6) 다음 필터로 요청 전달
-
-```java
-filterChain.doFilter(request, response);
-```
-
-#### (7) JWT 필터를 Spring Security 필터 체인에 등록
-
-- 1. 생성자 주입
-
-```java
-private final JwtUtil jwtUtil;
-private final CustomUserDetailsService userDetailsService;
-
-public SecurityConfig(JwtUtil jwtUtil, CustomUserDetailsService userDetailsService) {
-    this.jwtUtil = jwtUtil;
-    this.userDetailsService = userDetailsService;
-}
-```
-
-* `SecurityConfig` 클래스는 `JwtUtil` 과 `CustomUserDetailsService` 를 의존성으로 가짐
-* Spring이 빈을 자동으로 넣어줌 (생성자 주입)
-* 이렇게 주입받은 객체는 **JWT 검증**과 **유저 정보 조회**에 사용됨
-
-
-- 2. 필터 등록
+### **SecurityConfig에서 필터 등록**
 
 ```java
 http.addFilterBefore(new JwtFilter(jwtUtil, userDetailsService),
         UsernamePasswordAuthenticationFilter.class);
 ```
 
-- 의미
-
-* **`new JwtFilter(jwtUtil, userDetailsService)`**
-  → 우리가 만든 JWT 인증 필터 객체 생성
-* **`addFilterBefore(…, UsernamePasswordAuthenticationFilter.class)`**
-  → 스프링 시큐리티의 기본 **Username/Password 로그인 처리 필터** 실행 전에 **JWT 필터**가 먼저 실행되도록 설정
+* 기본 Username/Password 필터 전에 JWT 필터 실행
 
 ---
 
-- 💡 왜 `Before`?
+## **9. 로그인 처리 (AuthController)**
 
-* 기본적으로 Spring Security는 **폼 로그인(`UsernamePasswordAuthenticationFilter`)** 이나 **세션 인증**을 먼저 사용
-* 우리는 **세션 기반 인증 대신 JWT 기반 인증**을 적용하려는 거니까,
-  요청이 오면 **JWT 필터가 먼저 토큰 검증**을 하고 → 인증 성공 시 SecurityContext에 저장 → 이후 기본 인증 필터가 건너뜀
+* `/auth/login` GET → 로그인 폼
+* `/auth/login` POST → 로그인 처리
+
+  1. AuthenticationManager → 아이디/비번 검증
+  2. JwtUtil → JWT 발급
+  3. ResponseCookie → HttpOnly 쿠키에 JWT 전달
+  4. 성공 → `/my-page` 이동
+  5. 실패 → 에러 메시지 담아 `/auth/login` 재전송
 
 ---
 
-- 👉 정리
+## **10. 로그인 후 사용자 페이지 (/my-page)**
 
-이 부분은
+```java
+@GetMapping("/my-page")
+public String myPage(Model model, Authentication authentication) {
+    model.addAttribute("username", authentication.getName());
+    return "my-page";
+}
+```
 
-1. `SecurityConfig`가 **JwtUtil, UserDetailsService** 받아서 JWT 검증 준비
-2. **Spring Security 필터 체인**에 우리가 만든 `JwtFilter`를 등록
-3. 모든 요청이 들어오면 → **JWT 필터가 제일 먼저 실행**돼서 사용자 인증 처리
+* SecurityContext에서 인증 정보 가져오기
+* 로그인한 사용자 이름을 뷰에 전달
 
-## 9. `AuthController`에서 로그인 처리 매핑
-- AuthenticationManager → 아이디/비번 검증
-- JwtUtil → JWT 발급
-- ResponseCookie → JWT를 HttpOnly 쿠키에 담아 응답
-- 성공 → /my-page 이동
-- 실패 → 에러 메시지 담아 다시 /auth/login
+---
 
-## 10. `MainController`에 로그인 템플릿 호출 부분 추가
-- 로그인 성공한 사용자가 /my-page 요청 시 실행
-- Authentication에서 사용자 정보를 꺼내서 뷰에 전달
-- 화면에 “로그인한 사용자 이름”을 표시할 수 있음
+## **11. Refresh Token & 재발급 필터**
+
+### **RefreshTokenReissueFilter 역할**
+
+1. 요청 쿠키에서 Access Token 확인
+2. 정상 → SecurityContext에 인증 정보 등록
+3. 만료 → Refresh Token 확인
+4. Refresh Token 정상 → 새 Access Token 발급 → SecurityContext 등록
+5. Refresh Token 문제 → 인증 실패 처리
+6. 필터 체인 계속 진행
+
+### **필드**
+
+```java
+private final JwtUtil jwtUtil;
+private final UserDetailsService userDetailsService;
+private final RefreshTokenRepository refreshTokenRepository;
+```
+
+### **동작 요약**
+
+* Access Token 유효 → 인증 처리
+* Access Token 만료 → Refresh Token 검증 → 새 Access Token 발급
+* SecurityContextHolder에 인증 정보 등록
+* 최종적으로 filterChain.doFilter() 호출하여 요청 전달
+
+---
+
+## **12. 전체 인증 흐름 정리**
+
+1. 클라이언트 요청 → JWT 필터 실행
+2. Access Token 검증
+
+  * 정상 → SecurityContext 등록 → Controller로 전달
+  * 만료 → Refresh Token 검증
+
+    * 정상 → 새 Access Token 발급 → SecurityContext 등록
+    * 실패 → 401/인증 실패 처리
+3. SecurityContextHolder에 인증 정보 등록 후 Controller 실행
+4. Controller에서 인증 정보 사용 → 사용자 이름/권한 등 표시 가능
