@@ -15,6 +15,7 @@ public class MainController {
     @GetMapping("/my-page")
     public String myPage(Model model, Authentication authentication) {
         model.addAttribute("username", authentication.getName());
+        model.addAttribute("role", authentication.getAuthorities().iterator().next().getAuthority());
         return "my-page";
     }
 
